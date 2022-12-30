@@ -3,12 +3,17 @@ from entities.user import User
 # para usar la conexion a la tabla de user en la base de datos
 from data.user import UserDB
 
+# para usar interfaz debemos de importar tkinter
+import tkinter as tk
+# importar la ventana principal
+from interface.main import MainWn
+
 # inicializar la instancia de la entidad usuario
 user = User()
 # inicializar la instancia de usuario con conexion a base de datos
 userDb = UserDB()
 
-# solo una funcion que devuelve un numero
+""" # solo una funcion que devuelve un numero
 def add_option() -> int:
     number:int = int(input('Select option >> '))
     return number
@@ -75,9 +80,18 @@ def menu():
                 break
 
     userDb.close_connection()
-    print('Farewell')
+    print('Farewell') """
 
 
 if __name__ == '__main__': # esto es para cuando hay mas de un archivo main en las diferente carpeta, y con esto podemos identificar cual es el principal
-    userDb.create_table()
-    menu() # se llama la funcion menu
+    """ userDb.create_table()
+    menu() # se llama la funcion menu """
+
+    """ titles = ["ID", "Name", "Firstname", "Lastname", "Phonenumber", "Email", "Password"]
+    data = userDb.select_users()
+    rows = len(data)
+    columns = len(data[0]) """
+
+    root = tk.Tk()
+    main = MainWn(master=root)
+    main.mainloop()
