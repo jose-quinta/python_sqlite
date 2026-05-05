@@ -1,0 +1,157 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkinter.messagebox import askquestion, showinfo
+
+from app.interface.register import RegisterWn
+from app.controllers.user import UserDB
+from app.entities.user import User
+
+
+class MainWn(tk.Frame):
+    def __init__(self, master: tk.Tk | None = None, userDb: UserDB | None = None, user: User | None = None) -> None:
+        super().__init__(master)
+
+        self.userDb = userDb or UserDB()
+        self.user = user or User()
+
+        self.configure(bg='#f0f0f0')
+        self.pack(fill=tk.BOTH, expand=True)
+
+        self.master.title('User Management System')
+        self.master.geometry('1000x600')
+        self.master.minsize(800, 500)
+
+        self.configure_styles()
+        self.create_database()
+        self.setup_ui()
+        self.load_users()
+
+
+    def configure_styles(self):
+        style = ttk.Style()
+        style.configure('Toolbar.TFrame', background='#e0e0e0')
+        style.configure('Success.TButton', background='#4CAF50', foreground='white')
+        style.configure('Warning.TButton', background='#FF9800', foreground='white')
+        style.configure('Danger.TButton', background='#F44336', foreground='white')
+
+
+    def create_database(self):
+        if not self.userDb.create_table():
+            messagebox.showerror('Database Error', 'Failed to connect to database')
+
+
+    def setup_ui(self):
+        self.setup_menu()
+        self.setup_toolbar()
+        self.setup_table()
+        self.setup_statusbar()
+
+
+    def setup_menu(self):
+        menubar = tk.Menu(self.master)
+        self.master.config(menu=menubar)
+
+        file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="New User", command=lambda: self.open_register(1), accelerator="Ctrl+N")
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.exit_application)
+        menubar.add_cascade(label="File", menu=file_menu)
+
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="About", command=self.about_of)
+        menubar.add_cascade(label="Help", menu=help_menu)
+
+        self.master.bind('<Control-n>', lambda e: self.open_register(1))
+
+
+    def setup_toolbar(self):
+        toolbar = ttk.Frame(self, style='Toolbar.TFrame')
+        toolbar.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+
+        ttk.Button(toolbar, text="\u2795 New User", command=lambda: self.open_register(1)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(toolbar, text="\u270F Edit", command=lambda: self.open_register(2)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(toolbar, text="\uD83D\uDDD1 Delete", command=lambda: self.open_register(3)).pack(side=tk.LEFT, padx=2)
+
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
+
+        ttk.Button(toolbar, text="\uD83D\uDD04 Refresh", command=self.load_users).pack(side=tk.LEFT, padx=2)
+
+
+    def setup_table(self):
+        table_frame = ttk.Frame(self)
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        columns = ('ID', 'Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Password')
+
+        self.tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=20)
+
+        for col in columns:
+            self.tree.heading(col, text=col)
+            width = 80 if col == 'ID' else 150 if col in ('Name', 'Email') else 120
+            self.tree.column(col, width=width, minwidth=50, anchor=tk.W)
+
+        self.tree.column('Password', width=100, anchor=tk.CENTER)
+
+        vsb = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        hsb = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=self.tree.xview)
+        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+
+        self.tree.grid(row=0, column=0, sticky='nsew')
+        vsb.grid(row=0, column=1, sticky='ns')
+        hsb.grid(row=1, column=0, sticky='ew')
+
+        table_frame.grid_rowconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(0, weight=1)
+
+        self.tree.bind('<Double-1>', lambda e: self.open_register(2))
+
+
+    def setup_statusbar(self):
+        self.status_bar = ttk.Label(self, text="Ready", relief=tk.SUNKEN, anchor=tk.W)
+        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+
+    def load_users(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        users = self.userDb.select_users()
+        self.users_data = users
+
+        for user in users:
+            data = user.to_tuple()
+            display_data = list(data)
+            if user._is_hashed(user.password):
+                display_data[6] = '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'
+            self.tree.insert('', tk.END, values=display_data)
+
+        self.status_bar.config(text=f"Total users: {len(users)}")
+
+
+    def open_register(self, type: int):
+        selected = self.tree.selection()
+
+        if type in (2, 3) and not selected:
+            messagebox.showwarning('No Selection', 'Please select a user from the table')
+            return
+
+        user_to_edit = None
+        if type in (2, 3) and selected:
+            item = self.tree.item(selected[0])
+            user_id = item['values'][0]
+            user_to_edit = self.userDb.select_user(user_id)
+
+        registerWn = RegisterWn(self, type=type, userDb=self.userDb, user=user_to_edit)
+        self.wait_window(registerWn)
+        self.load_users()
+
+
+    def exit_application(self):
+        if askquestion('Exit', 'Are you sure you want to exit?') == 'yes':
+            self.userDb.close_connection()
+            self.master.destroy()
+
+
+    def about_of(self):
+        showinfo('About', 'User Management System\nVersion 1.0\n\nA simple CRUD application with SQLite')
+

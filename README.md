@@ -1,13 +1,26 @@
+# Python SQLite CRUD
 
-# una prueba del uso de modulo de sqlite crud basico
+A basic CRUD application using SQLite with Python and Tkinter interface.
 
-solo es un crud basico para ver el uso de este, ademas de que no me acorde
-de hacer la herencia en la conexion de mysql, por lo que aqui si va
-lo de la herencia de la Database (data.db) a UserDB (data.user).
+## Features
+- User management (Create, Read, Update, Delete)
+- Secure database connections with logging
+- Password hashing (SHA-256)
+- Input validation (email, phone)
+- Centralized logging system
 
-aqui si se puede mandar a crear la tabla desde aqui, bueno no he intentado ver
-si sirve en mysql, sql server, postgresql y mongo.
+## Project Structure
+```
+app/
+├── controllers/    # Database operations
+├── data/          # Database connection
+├── entities/      # Data models
+├── interface/      # Tkinter GUI
+└── utils/         # Utilities (logger)
+```
 
-tambien use un entorno virtual pero no hace mucho ya que el modulo de sqlite
-ya viene integrando en python, por lo que no instale nada.
-
+## Usage
+Run the application:
+```bash
+python main.py
+```
