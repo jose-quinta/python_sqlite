@@ -10,7 +10,14 @@ logger = get_logger(__name__)
 class UserDB(Database):
     def __init__(self, db_path: str = 'data/python_sqlite.db') -> None:
         super().__init__(db_path)
-        self.cursor: sqlite3.Cursor | None = self.connection.cursor()
+        self.cursor: sqlite3.Cursor | None = None
+        try:
+            self.cursor = self.connection.cursor() # type: ignore
+
+            logger.info(f"Successfully create the cursor")
+        except sqlite3.Error as e:
+            logger.error(f"Failed to connect to database at {db_path}: {str(e)}", exc_info=True)
+            raise
         logger.info("UserDB initialized with database cursor")
 
     def create_table(self) -> bool:
@@ -24,8 +31,8 @@ class UserDB(Database):
                 email TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL
             );'''
-            self.cursor.execute(sql_query)
-            self.connection.commit()
+            self.cursor.execute(sql_query) # type: ignore
+            self.connection.commit() # type: ignore
             logger.info("User table verified/created successfully")
             return True
         except sqlite3.Error as e:
@@ -35,8 +42,8 @@ class UserDB(Database):
     def select_last_id(self) -> int | None:
         sql = 'SELECT id FROM user ORDER BY id DESC LIMIT 1;'
         try:
-            self.cursor.execute(sql)
-            result: Any = self.cursor.fetchone()
+            self.cursor.execute(sql) # type: ignore
+            result: Any = self.cursor.fetchone() # type: ignore
             return result[0] if result else None
         except sqlite3.Error as e:
             logger.error(f"Failed to fetch last user ID: {str(e)}", exc_info=True)
@@ -51,8 +58,8 @@ class UserDB(Database):
         try:
             query = '''INSERT INTO user(name, firstname, lastname, phonenumber, email, password)
                        VALUES (?, ?, ?, ?, ?, ?)'''
-            self.cursor.execute(query, user.to_tuple()[1:])
-            self.connection.commit()
+            self.cursor.execute(query, user.to_tuple()[1:]) # type: ignore
+            self.connection.commit() # type: ignore
             logger.info(f"User {user.email} inserted successfully")
             return True, "User registered successfully"
         except sqlite3.Error as e:
@@ -63,8 +70,8 @@ class UserDB(Database):
         try:
             query = '''SELECT id, name, firstname, lastname, phonenumber, email, password
                        FROM user;'''
-            self.cursor.execute(query)
-            rows = self.cursor.fetchall()
+            self.cursor.execute(query) # type: ignore
+            rows = self.cursor.fetchall() # type: ignore
             return [User.from_tuple(row) for row in rows]
         except sqlite3.Error as e:
             logger.error(f"Failed to fetch all users: {str(e)}", exc_info=True)
@@ -74,8 +81,8 @@ class UserDB(Database):
         try:
             query = '''SELECT id, name, firstname, lastname, phonenumber, email, password
                        FROM user WHERE id=?;'''
-            self.cursor.execute(query, (id,))
-            row = self.cursor.fetchone()
+            self.cursor.execute(query, (id,)) # type: ignore
+            row: Any = self.cursor.fetchone() # type: ignore
             if row:
                 return User.from_tuple(row)
             logger.warning(f"No user found with ID: {id}")
@@ -94,11 +101,11 @@ class UserDB(Database):
             query = '''UPDATE user
                        SET name=?, firstname=?, lastname=?, phonenumber=?, email=?, password=?
                        WHERE id=?;'''
-            self.cursor.execute(query, (
+            self.cursor.execute(query, ( # type: ignore
                 user.name, user.firstname, user.lastname,
                 user.phonenumber, user.email, user.password, id
             ))
-            self.connection.commit()
+            self.connection.commit() # type: ignore
             logger.info(f"User with ID {id} updated successfully")
             return True, "User updated successfully"
         except sqlite3.Error as e:
@@ -108,8 +115,8 @@ class UserDB(Database):
     def delete_user(self, id: int) -> tuple[bool, str]:
         try:
             query = 'DELETE FROM user WHERE id=?;'
-            self.cursor.execute(query, (id,))
-            self.connection.commit()
+            self.cursor.execute(query, (id,)) # type: ignore
+            self.connection.commit() # type: ignore
             logger.info(f"User with ID {id} deleted successfully")
             return True, "User deleted successfully"
         except sqlite3.Error as e:

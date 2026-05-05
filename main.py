@@ -6,7 +6,7 @@ from app.controllers.user import UserDB
 from app.interface.main import MainWn
 
 if __name__ == '__main__':
-    setup_logger('python_sqlite', level='INFO')
+    setup_logger('python_sqlite', level='INFO') # type: ignore
 
     root = tk.Tk()
     userDb = UserDB()
