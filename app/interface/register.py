@@ -79,11 +79,6 @@ class RegisterWn(tk.Toplevel):
 
         main_frame.columnconfigure(1, weight=1)
 
-        style = ttk.Style()
-        style.theme_use('alt')
-        style.configure('TButton', foreground= "#000000")
-        style.map('TButton')
-
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=row, column=0, columnspan=2, pady=20)
 
