@@ -1,124 +1,80 @@
-import sqlite3
-from typing import Any
-
-from app.data.db import Database
+from typing import Optional, List
+from lib.utils.logger import get_logger
 from app.entities.user import User
-from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-class UserDB(Database):
-    def __init__(self, db_path: str = 'data/python_sqlite.db') -> None:
-        super().__init__(db_path)
-        self.cursor: sqlite3.Cursor | None = None
+class UserDB:
+    def __init__(self):
+        pass
+
+    def select_users(self) -> List[User]:
         try:
-            self.cursor = self.connection.cursor() # type: ignore
-
-            logger.info(f"Successfully create the cursor")
-        except sqlite3.Error as e:
-            logger.error(f"Failed to connect to database at {db_path}: {str(e)}", exc_info=True)
-            raise
-        logger.info("UserDB initialized with database cursor")
-
-    def create_table(self) -> bool:
-        try:
-            sql_query = '''CREATE TABLE IF NOT EXISTS user(
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                firstname TEXT NOT NULL,
-                lastname TEXT NOT NULL,
-                phonenumber TEXT,
-                email TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL
-            );'''
-            self.cursor.execute(sql_query) # type: ignore
-            self.connection.commit() # type: ignore
-            logger.info("User table verified/created successfully")
-            return True
-        except sqlite3.Error as e:
-            logger.error(f"Failed to create user table: {str(e)}", exc_info=True)
-            return False
-
-    def select_last_id(self) -> int | None:
-        sql = 'SELECT id FROM user ORDER BY id DESC LIMIT 1;'
-        try:
-            self.cursor.execute(sql) # type: ignore
-            result: Any = self.cursor.fetchone() # type: ignore
-            return result[0] if result else None
-        except sqlite3.Error as e:
-            logger.error(f"Failed to fetch last user ID: {str(e)}", exc_info=True)
-            return None
-
-    def insert_user(self, user: User) -> tuple[bool, str]:
-        is_valid, message = user.validate()
-        if not is_valid:
-            logger.warning(f"Validation failed for user {user.email}: {message}")
-            return False, message
-
-        try:
-            query = '''INSERT INTO user(name, firstname, lastname, phonenumber, email, password)
-                       VALUES (?, ?, ?, ?, ?, ?)'''
-            self.cursor.execute(query, user.to_tuple()[1:]) # type: ignore
-            self.connection.commit() # type: ignore
-            logger.info(f"User {user.email} inserted successfully")
-            return True, "User registered successfully"
-        except sqlite3.Error as e:
-            logger.error(f"Failed to insert user {user.email}: {str(e)}", exc_info=True)
-            return False, str(e)
-
-    def select_users(self) -> list[User]:
-        try:
-            query = '''SELECT id, name, firstname, lastname, phonenumber, email, password
-                       FROM user;'''
-            self.cursor.execute(query) # type: ignore
-            rows = self.cursor.fetchall() # type: ignore
-            return [User.from_tuple(row) for row in rows]
-        except sqlite3.Error as e:
-            logger.error(f"Failed to fetch all users: {str(e)}", exc_info=True)
+            users = User.objects.all()
+            logger.info("Fetched {} users".format(len(users)))
+            return users
+        except Exception as e:
+            logger.error("Failed to fetch users: {}".format(e), exc_info=True)
             return []
 
-    def select_user(self, id: int) -> User | None:
+    def select_user(self, user_id: int) -> Optional[User]:
         try:
-            query = '''SELECT id, name, firstname, lastname, phonenumber, email, password
-                       FROM user WHERE id=?;'''
-            self.cursor.execute(query, (id,)) # type: ignore
-            row: Any = self.cursor.fetchone() # type: ignore
-            if row:
-                return User.from_tuple(row)
-            logger.warning(f"No user found with ID: {id}")
-            return None
-        except sqlite3.Error as e:
-            logger.error(f"Failed to fetch user with ID {id}: {str(e)}", exc_info=True)
+            user = User.objects.get(id=user_id)
+            return user
+        except Exception as e:
+            logger.warning("User with ID {} not found: {}".format(user_id, e))
             return None
 
-    def update_user(self, id: int, user: User) -> tuple[bool, str]:
-        is_valid, message = user.validate()
-        if not is_valid:
-            logger.warning(f"Validation failed for user update {user.email}: {message}")
-            return False, message
-
+    def insert_user(self, user: User) -> tuple:
         try:
-            query = '''UPDATE user
-                       SET name=?, firstname=?, lastname=?, phonenumber=?, email=?, password=?
-                       WHERE id=?;'''
-            self.cursor.execute(query, ( # type: ignore
-                user.name, user.firstname, user.lastname,
-                user.phonenumber, user.email, user.password, id
-            ))
-            self.connection.commit() # type: ignore
-            logger.info(f"User with ID {id} updated successfully")
+            is_valid, message = user.validate()
+            if not is_valid:
+                return False, message
+            
+            user.save()
+            logger.info("User {} inserted successfully".format(user.email))
+            return True, "User registered successfully"
+        except Exception as e:
+            logger.error("Failed to insert user: {}".format(e), exc_info=True)
+            return False, str(e)
+
+    def update_user(self, user_id: int, updated_user: User) -> tuple:
+        try:
+            is_valid, message = updated_user.validate()
+            if not is_valid:
+                return False, message
+            
+            user = User.objects.get(id=user_id)
+            user.name = updated_user.name
+            user.firstname = updated_user.firstname
+            user.lastname = updated_user.lastname
+            user.phonenumber = updated_user.phonenumber
+            user.email = updated_user.email
+            user.password = updated_user.password
+            user.save()
+            
+            logger.info("User with ID {} updated successfully".format(user_id))
             return True, "User updated successfully"
-        except sqlite3.Error as e:
-            logger.error(f"Failed to update user with ID {id}: {str(e)}", exc_info=True)
+        except Exception as e:
+            logger.error("Failed to update user {}: {}".format(user_id, e), exc_info=True)
             return False, str(e)
 
-    def delete_user(self, id: int) -> tuple[bool, str]:
+    def delete_user(self, user_id: int) -> tuple:
         try:
-            query = 'DELETE FROM user WHERE id=?;'
-            self.cursor.execute(query, (id,)) # type: ignore
-            self.connection.commit() # type: ignore
-            logger.info(f"User with ID {id} deleted successfully")
+            user = User.objects.get(id=user_id)
+            user.delete()
+            logger.info("User with ID {} deleted successfully".format(user_id))
             return True, "User deleted successfully"
-        except sqlite3.Error as e:
-            logger.error(f"Failed to delete user with ID {id}: {str(e)}", exc_info=True)
+        except Exception as e:
+            logger.error("Failed to delete user {}: {}".format(user_id, e), exc_info=True)
             return False, str(e)
+
+    def count_users(self) -> int:
+        try:
+            return User.objects.count()
+        except Exception as e:
+            logger.error("Failed to count users: {}".format(e), exc_info=True)
+            return 0
+    
+    def close(self) -> None:
+        pass

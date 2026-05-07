@@ -1,83 +1,72 @@
-from dataclasses import dataclass
+from lib.orm import Model, CharField, PrimaryKeyField
+from lib.utils.logger import get_logger
 import hashlib
 import re
 
+logger = get_logger(__name__)
 
-@dataclass
-class User:
-    id: int = 0
-    name: str = 'anonymous'
-    firstname: str = 'firstname'
-    lastname: str = 'lastname'
-    phonenumber: str = '0000-0000'
-    email: str = 'example@gmail.com'
-    password: str = '12345'
+class User(Model):
+    _table_name = "user"
+    id = PrimaryKeyField()
+    name = CharField(max_length=60, null=False)
+    firstname = CharField(max_length=60, null=False)
+    lastname = CharField(max_length=60, null=False)
+    phonenumber = CharField(max_length=10, null=True)
+    email = CharField(max_length=60, unique=True, null=False)
+    password = CharField(max_length=64, null=False)
 
-    def __post_init__(self):
-        if self.password and not self._is_hashed(self.password):
-            self.password = self.hash_password(self.password)
+    def __repr__(self):
+        return "<User id={} name={} email={}>".format(self.id, self.name, self.email)
 
-    @staticmethod
-    def hash_password(password: str) -> str:
-        return hashlib.sha256(password.encode()).hexdigest()
+    def _is_hashed(self):
+        return len(self.password) == 64
 
-    @staticmethod
-    def _is_hashed(password: str) -> bool:
-        return len(password) == 64
+    def set_password(self, plain):
+        self.password = hashlib.sha256(plain.encode()).hexdigest()
 
-    def verify_password(self, plain_password: str) -> bool:
-        return self.password == self.hash_password(plain_password)
+    def verify_password(self, plain):
+        return self.password == hashlib.sha256(plain.encode()).hexdigest()
 
-    def to_tuple(self) -> tuple[int, str, str, str, str, str, str]:
-        return (self.id, self.name, self.firstname, self.lastname,
-                self.phonenumber, self.email, self.password)
-
-    @classmethod
-    def from_tuple(cls, data: tuple[int, str, str, str, str, str, str]) -> 'User':
-        return cls(
-            id= data[0],
-            name= data[1],
-            firstname= data[2],
-            lastname= data[3],
-            phonenumber= data[4],
-            email= data[5],
-            password= data[6]
-        )
-
-    def validate(self) -> tuple[bool, str]:
+    def validate(self):
         if not self.name or len(self.name.strip()) < 2:
             return False, "Name must be at least 2 characters"
-
         if not self.firstname or len(self.firstname.strip()) < 2:
             return False, "First name must be at least 2 characters"
-
         if not self.lastname or len(self.lastname.strip()) < 2:
             return False, "Last name must be at least 2 characters"
-
         if not self._validate_email(self.email):
             return False, "Invalid email format"
-
         if not self._validate_phone(self.phonenumber):
-            return False, "Phone number must be 10 digits or format 0000-0000"
-
+            return False, "Phone number must be 10 digits"
         if not self.password or len(self.password) < 4:
             return False, "Password must be at least 4 characters"
-
         return True, "Valid"
 
     @staticmethod
-    def _validate_email(email: str) -> bool:
+    def _validate_email(email):
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None
 
     @staticmethod
-    def _validate_phone(phone: str) -> bool:
+    def _validate_phone(phone):
+        if not phone:
+            return True
+        import re
         cleaned = re.sub(r'[-\s]', '', phone)
-        return cleaned.isdigit() and len(cleaned) == 8
+        return cleaned.isdigit() and len(cleaned) == 10
 
-    def __str__(self) -> str:
-        return f'''\tID: {self.id}
-        Name: {self.name} {self.firstname} {self.lastname}
-        Phonenumber: {self.phonenumber}
-        Email: {self.email}
-        Password: {'******' if self._is_hashed(self.password) else self.password}'''
+    def to_tuple(self):
+        return (self.id, self.name, self.firstname, self.lastname, 
+                self.phonenumber, self.email, self.password)
+
+    @classmethod
+    def from_tuple(cls, data):
+        user = cls()
+        user.id = data[0]
+        user.name = data[1]
+        user.firstname = data[2]
+        user.lastname = data[3]
+        user.phonenumber = data[4]
+        user.email = data[5]
+        user.password = data[6]
+        return user

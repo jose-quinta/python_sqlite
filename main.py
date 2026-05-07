@@ -1,16 +1,16 @@
 import tkinter as tk
+import sys
+from pathlib import Path
 
-from app.utils.logger import setup_logger
-from app.entities.user import User
-from app.controllers.user import UserDB
+# Add project root to path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
+
+from app.data.db import init_db
 from app.interface.main import MainWn
 
 if __name__ == '__main__':
-    setup_logger('python_sqlite', level='INFO') # type: ignore
-
+    init_db()
     root = tk.Tk()
-    userDb = UserDB()
-    user = User()
-
-    main = MainWn(master=root, userDb=userDb, user=user)
+    main = MainWn(master=root)
     root.mainloop()
