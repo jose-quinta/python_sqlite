@@ -9,7 +9,7 @@ from app.controllers.user import UserDB
 
 
 class UserManagementWn(tk.Frame):
-    def __init__(self, master: tk.Tk | None = None, on_exit: Optional[callable] = None):
+    def __init__(self, master: Optional[tk.Tk], on_exit: Optional[callable] = None):
         super().__init__(master=master)
 
         self.on_exit = on_exit
@@ -20,19 +20,18 @@ class UserManagementWn(tk.Frame):
 
         if hasattr(self.master, 'title'):
             self.master.title('User Management System')
-        if hasattr(self.master, 'geometry'):
-            self.master.geometry('1000x600')
-        if hasattr(self.master, 'minsize'):
-            self.master.minsize(800, 500)
 
-        self.setup_ui()
-        self.load_users()
-
-    def setup_ui(self):
         self.setup_menu()
         self.setup_toolbar()
-        self.setup_table()
-        self.setup_statusbar()
+
+        self.view_container = tk.Frame(self, bg='#f0f0f0')
+        self.view_container.pack(fill=tk.BOTH, expand=True)
+
+        self.show_user_list()
+
+    def clear_container(self):
+        for w in self.view_container.winfo_children():
+            w.destroy()
 
     def setup_menu(self):
         if not isinstance(self.master, (tk.Tk, tk.Toplevel)):
@@ -56,15 +55,46 @@ class UserManagementWn(tk.Frame):
         toolbar.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
         ttk.Button(toolbar, text="New User", command=lambda: self.open_register(1)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(toolbar, text="Edit", command=lambda: self.open_register(2)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(toolbar, text="Delete", command=lambda: self.open_register(3)).pack(side=tk.LEFT, padx=2)
+        self.btn_edit = ttk.Button(toolbar, text="Edit", command=lambda: self.open_register(2))
+        self.btn_edit.pack(side=tk.LEFT, padx=2)
+        self.btn_delete = ttk.Button(toolbar, text="Delete", command=lambda: self.open_register(3))
+        self.btn_delete.pack(side=tk.LEFT, padx=2)
 
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
 
-        ttk.Button(toolbar, text="Refresh", command=self.load_users).pack(side=tk.LEFT, padx=2)
+        self.btn_refresh = ttk.Button(toolbar, text="Refresh", command=self.load_users)
+        self.btn_refresh.pack(side=tk.LEFT, padx=2)
+
+        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
+
+        ttk.Button(toolbar, text="Back", command=self.exit_application).pack(side=tk.LEFT, padx=2)
+
+    def show_user_list(self):
+        self.clear_container()
+        self.setup_table()
+        self.setup_statusbar()
+        self.load_users()
+        self.btn_edit.configure(state='normal')
+        self.btn_delete.configure(state='normal')
+        self.btn_refresh.configure(state='normal')
+
+    def show_register_form(self, type_val: int, user: Optional[User] = None):
+        self.clear_container()
+        self.btn_edit.configure(state='disabled')
+        self.btn_delete.configure(state='disabled')
+        self.btn_refresh.configure(state='disabled')
+
+        RegisterWn(
+            master=self.view_container, type=type_val,
+            userDb=self.userDb, user=user,
+            on_complete=self.on_register_complete
+        )
+
+    def on_register_complete(self, refresh: bool = True) -> None:
+        self.show_user_list()
 
     def setup_table(self):
-        table_frame = ttk.Frame(self)
+        table_frame = ttk.Frame(self.view_container)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         columns = ('ID', 'Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Password')
@@ -92,10 +122,13 @@ class UserManagementWn(tk.Frame):
         self.tree.bind('<Double-1>', lambda e: self.open_register(2))
 
     def setup_statusbar(self):
-        self.status_bar = ttk.Label(self, text="Ready", relief=tk.SUNKEN, anchor=tk.W)
+        self.status_bar = ttk.Label(self.view_container, text="Ready", relief=tk.SUNKEN, anchor=tk.W)
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
     def load_users(self):
+        if not hasattr(self, 'tree') or not self.tree.winfo_exists():
+            return
+
         try:
             for item in self.tree.get_children():
                 self.tree.delete(item)
@@ -117,21 +150,19 @@ class UserManagementWn(tk.Frame):
             pass
 
     def open_register(self, type_val: int):
-        selected = self.tree.selection()
-
-        if type_val in (2, 3) and not selected:
-            messagebox.showwarning('No Selection', 'Please select a user from the table')
-            return
-
-        user_to_edit = None
-        if type_val in (2, 3) and selected:
+        if type_val in (2, 3):
+            if not hasattr(self, 'tree') or not self.tree.winfo_exists():
+                return
+            selected = self.tree.selection()
+            if not selected:
+                messagebox.showwarning('No Selection', 'Please select a user from the table')
+                return
             item = self.tree.item(selected[0])
             user_id = int(item['values'][0])
-            user_to_edit: Optional[User | object | None] = self.userDb.select_user(user_id)
-
-        registerWn = RegisterWn(self, type=type_val, userDb=self.userDb, user=user_to_edit)
-        self.wait_window(registerWn)
-        self.load_users()
+            user_to_edit = self.userDb.select_user(user_id)
+            self.show_register_form(type_val, user_to_edit)
+        else:
+            self.show_register_form(type_val)
 
     def exit_application(self):
         if askquestion('Exit', 'Are you sure you want to exit?') == 'yes':

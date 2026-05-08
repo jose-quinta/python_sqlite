@@ -52,9 +52,15 @@ def test_gui_loads():
         test_user.email = "gui@example.com";
         test_user.set_password("test123");
 
-        reg_win = RegisterWn(master=root, type=1, userDb=UserDB(), user=test_user)
+        reg_container = tk.Frame(root)
+        reg_container.pack()
+        reg_called = [False]
+        def on_reg_complete(refresh):
+            reg_called[0] = True
+        reg_win = RegisterWn(master=reg_container, type=1, userDb=UserDB(), user=test_user, on_complete=on_reg_complete)
         print("  RegisterWn created OK")
         reg_win.destroy()
+        reg_container.destroy()
 
         mgmt_app.destroy()
         container.destroy()

@@ -1,16 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter.messagebox import askquestion, showinfo, showerror
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
 
 from app.entities.user import User
 from app.controllers.user import UserDB
 
 
-class RegisterWn(tk.Toplevel):
+class RegisterWn(tk.Frame):
     def __init__(
         self, master: Optional[tk.Tk] = None, type: int = 1,
-        userDb: Optional[UserDB] = None, user: Optional[User] = None
+        userDb: Optional[UserDB] = None, user: Optional[User] = None,
+        on_complete: Optional[Callable[[bool], None]] = None
     ) -> None:
         super().__init__(master=master)
 
@@ -18,11 +19,10 @@ class RegisterWn(tk.Toplevel):
         self.userDb: UserDB = userDb or UserDB()
         self.user: User = user or User()
         self.password_changed: bool = False
+        self.on_complete: Optional[Callable[[bool], None]] = on_complete
 
         self.configure(bg='#f5f5f5')
-        self.title(self.get_title())
-        self.geometry('500x450')
-        self.resizable(False, False)
+        self.pack(fill=tk.BOTH, expand=True)
 
         self.create_widgets()
         self.load_user_data()
@@ -93,14 +93,13 @@ class RegisterWn(tk.Toplevel):
                        command=self.submit_delete).pack(side=tk.LEFT, padx=5)
 
         ttk.Button(button_frame, text='Cancel',
-                   command=self.destroy).pack(side=tk.LEFT, padx=5)
+                   command=self.cancel).pack(side=tk.LEFT, padx=5)
 
         if self.type == 1:
             ttk.Button(button_frame, text='Clear',
                        command=self.clear_fields).pack(side=tk.LEFT, padx=5)
 
     def on_password_key(self, event: object = None) -> None:
-        """Track if the password field has been modified by the user"""
         self.password_changed = True
 
     def disable_fields(self) -> None:
@@ -134,7 +133,6 @@ class RegisterWn(tk.Toplevel):
                 self.entries['password'].bind('<Key>', self.on_password_key)
 
     def get_data(self) -> User:
-        """Extract form data and return updated User object"""
         self.user.name = self.entries['name'].get().strip()
         self.user.firstname = self.entries['firstname'].get().strip()
         self.user.lastname = self.entries['lastname'].get().strip()
@@ -150,14 +148,19 @@ class RegisterWn(tk.Toplevel):
             self.user.set_password('')
         return self.user
 
+    def cancel(self) -> None:
+        if self.on_complete:
+            self.on_complete(False)
+
     def submit_register(self) -> None:
         user: User = self.get_data()
         success, message = self.userDb.insert_user(user)
         if success:
-            messagebox.showinfo('Success', message)
-            self.destroy()
+            showinfo('Success', message)
+            if self.on_complete:
+                self.on_complete(True)
         else:
-            messagebox.showerror('Error', message)
+            showerror('Error', message)
 
     def submit_update(self) -> None:
         try:
@@ -166,14 +169,15 @@ class RegisterWn(tk.Toplevel):
             success, message = self.userDb.update_user(
                 user_id, user, password_changed=self.password_changed)
             if success:
-                messagebox.showinfo('Success', message)
-                self.destroy()
+                showinfo('Success', message)
+                if self.on_complete:
+                    self.on_complete(True)
             else:
-                messagebox.showerror('Error', message)
+                showerror('Error', message)
         except ValueError:
-            messagebox.showerror('Error', 'Invalid user ID')
+            showerror('Error', 'Invalid user ID')
         except AttributeError:
-            messagebox.showerror('Error', 'No user selected')
+            showerror('Error', 'No user selected')
 
     def submit_delete(self) -> None:
         if askquestion('Confirm Delete', 'Are you sure you want to delete this user?') == 'yes':
@@ -181,11 +185,12 @@ class RegisterWn(tk.Toplevel):
                 user_id: int = int(self.id_var.get())
                 success, message = self.userDb.delete_user(user_id)
                 if success:
-                    messagebox.showinfo('Success', message)
-                    self.destroy()
+                    showinfo('Success', message)
+                    if self.on_complete:
+                        self.on_complete(True)
                 else:
-                    messagebox.showerror('Error', message)
+                    showerror('Error', message)
             except ValueError:
-                messagebox.showerror('Error', 'Invalid user ID')
+                showerror('Error', 'Invalid user ID')
             except AttributeError:
-                messagebox.showerror('Error', 'No user selected')
+                showerror('Error', 'No user selected')
