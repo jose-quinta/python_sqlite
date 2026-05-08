@@ -1,134 +1,83 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
-from tkinter.messagebox import askquestion, showinfo
+from tkinter import ttk
 from typing import Optional
 
-from app.entities.user import User
-from app.interface.register import RegisterWn
-from app.controllers.user import UserDB
 
 class MainWn(tk.Frame):
-    def __init__(self, master: tk.Tk | None= None):
-        super().__init__(master= master)
-
-        self.userDb = UserDB()
+    def __init__(self, master: tk.Tk | None = None):
+        super().__init__(master=master)
 
         self.configure(bg='#f0f0f0')
         self.pack(fill=tk.BOTH, expand=True)
 
-        self.master.title('User Management System')
+        self.master.title('Management System')
         self.master.geometry('1000x600')
         self.master.minsize(800, 500)
 
-        self.setup_ui()
-        self.load_users()
+        self.setup_layout()
+        self.show_dashboard()
 
-    def setup_ui(self):
-        self.setup_menu()
-        self.setup_toolbar()
-        self.setup_table()
-        self.setup_statusbar()
+    def setup_layout(self):
+        self.header = tk.Frame(self, bg='#2c3e50', height=80)
+        self.header.pack(fill=tk.X)
+        self.header.pack_propagate(False)
 
-    def setup_menu(self):
-        menubar = tk.Menu(self.master)
-        self.master.config(menu=menubar)
+        self.content_frame = tk.Frame(self, bg='#f0f0f0')
+        self.content_frame.pack(fill=tk.BOTH, expand=True)
 
-        file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="New User", command=lambda: self.open_register(1))
-        file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.exit_application)
-        menubar.add_cascade(label="File", menu=file_menu)
+        self.footer = tk.Frame(self, bg='#34495e', height=30)
+        self.footer.pack(fill=tk.X, side=tk.BOTTOM)
+        self.footer.pack_propagate(False)
 
-        help_menu = tk.Menu(menubar, tearoff=0)
-        help_menu.add_command(label="About", command=self.about_of)
-        menubar.add_cascade(label="Help", menu=help_menu)
+        tk.Label(self.header, text='Management System',
+                 font=('Segoe UI', 18, 'bold'),
+                 fg='white', bg='#2c3e50').place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-    def setup_toolbar(self):
-        toolbar = ttk.Frame(self)
-        toolbar.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
+        tk.Label(self.footer, text='v3.0',
+                 font=('Segoe UI', 8), fg='white', bg='#34495e').pack(expand=True)
 
-        ttk.Button(toolbar, text="New User", command=lambda: self.open_register(1)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(toolbar, text="Edit", command=lambda: self.open_register(2)).pack(side=tk.LEFT, padx=2)
-        ttk.Button(toolbar, text="Delete", command=lambda: self.open_register(3)).pack(side=tk.LEFT, padx=2)
+    def clear_content(self):
+        for w in self.content_frame.winfo_children():
+            w.destroy()
 
-        ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
+    def show_dashboard(self):
+        self.clear_content()
 
-        ttk.Button(toolbar, text="Refresh", command=self.load_users).pack(side=tk.LEFT, padx=2)
+        nav_frame = tk.Frame(self.content_frame, bg='#f0f0f0')
+        nav_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-    def setup_table(self):
-        table_frame = ttk.Frame(self)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        card = tk.Frame(nav_frame, bg='white', highlightbackground='#d5d5d5',
+                        highlightthickness=1, cursor='hand2')
+        card.pack(padx=20, ipadx=40, ipady=30)
 
-        columns = ('ID', 'Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Password')
+        card_content = tk.Frame(card, bg='white')
+        card_content.pack(expand=True, padx=10, pady=10)
 
-        self.tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=20)
+        icon_label = tk.Label(card_content, text='[ Users ]',
+                              font=('Segoe UI', 16, 'bold'),
+                              fg='#2c3e50', bg='#ecf0f1',
+                              width=12, height=2)
+        icon_label.pack(pady=(0, 10))
 
-        for col in columns:
-            self.tree.heading(col, text=col)
-            width = 80 if col == 'ID' else 150 if col in ('Name', 'Email') else 120
-            self.tree.column(col, width=width, minwidth=50, anchor=tk.W)
+        tk.Label(card_content, text='User Management',
+                 font=('Segoe UI', 14, 'bold'),
+                 bg='white').pack()
 
-        self.tree.column('Password', width=100, anchor=tk.CENTER)
+        tk.Label(card_content, text='Register, edit, delete and list system users',
+                 font=('Segoe UI', 10), fg='#7f8c8d',
+                 bg='white', justify=tk.CENTER).pack(pady=(5, 10))
 
-        vsb = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        hsb = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=self.tree.xview)
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        ttk.Button(card_content, text='Open',
+                   command=self.show_user_management).pack(pady=(5, 0))
 
-        self.tree.grid(row=0, column=0, sticky='nsew')
-        vsb.grid(row=0, column=1, sticky='ns')
-        hsb.grid(row=1, column=0, sticky='ew')
+        for widget in (card, card_content, icon_label):
+            widget.bind('<Button-1>', lambda e: self.show_user_management(), add='+')
 
-        table_frame.grid_rowconfigure(0, weight=1)
-        table_frame.grid_columnconfigure(0, weight=1)
+    def show_user_management(self):
+        from app.interface.user_mgmt import UserManagementWn
 
-        self.tree.bind('<Double-1>', lambda e: self.open_register(2))
-
-    def setup_statusbar(self):
-        self.status_bar = ttk.Label(self, text="Ready", relief=tk.SUNKEN, anchor=tk.W)
-        self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
-
-    def load_users(self):
-        try:
-            for item in self.tree.get_children():
-                self.tree.delete(item)
-        except tk.TclError:
-            return
-
-        users = self.userDb.select_users()
-
-        try:
-            for user in users:
-                data = user.to_tuple()
-                display_data = list(data)
-                if user._is_hashed():
-                    display_data[6] = '******'
-                self.tree.insert('', tk.END, values=display_data)
-
-            self.status_bar.config(text="Total users: {}".format(len(users)))
-        except tk.TclError:
-            pass
-
-    def open_register(self, type_val: int):
-        selected = self.tree.selection()
-
-        if type_val in (2, 3) and not selected:
-            messagebox.showwarning('No Selection', 'Please select a user from the table')
-            return
-
-        user_to_edit = None
-        if type_val in (2, 3) and selected:
-            item = self.tree.item(selected[0])
-            user_id = int( item['values'][0] )
-            user_to_edit: Optional[User | object | None] = self.userDb.select_user(user_id)
-
-        registerWn = RegisterWn(self, type=type_val, userDb=self.userDb, user=user_to_edit)
-        self.wait_window(registerWn)
-        self.load_users()
-
-    def exit_application(self):
-        if askquestion('Exit', 'Are you sure you want to exit?') == 'yes':
-            self.userDb.close()
-            self.master.destroy()
-
-    def about_of(self):
-        showinfo('About', 'User Management System\nVersion 2.0 (ORM-based)\n\nA simple CRUD application with SQLite and custom ORM')
+        self.clear_content()
+        UserManagementWn(
+            master=self.content_frame,
+            on_exit=self.show_dashboard
+        )

@@ -19,9 +19,12 @@ def test_gui_loads():
     """Test that GUI components load without errors"""
     print("Test GUI: Loading interface components...")
 
-    # Test that we can import and create the main window class
+    # Test that we can import and create the dashboard and user management windows
     from app.interface.main import MainWn
     print("  MainWn imported OK")
+
+    from app.interface.user_mgmt import UserManagementWn
+    print("  UserManagementWn imported OK")
 
     from app.interface.register import RegisterWn
     print("  RegisterWn imported OK")
@@ -31,11 +34,14 @@ def test_gui_loads():
     root.withdraw()  # Hide the window
 
     try:
-        # Try to create MainWn instance
-        main_app = MainWn(master=root)
-        print("  MainWn created OK")
+        dash_app = MainWn(master=root)
+        print("  MainWn (Dashboard) created OK")
 
-        # Test creating RegisterWn
+        container = tk.Frame(root)
+        container.pack()
+        mgmt_app = UserManagementWn(master=container, on_exit=lambda: None)
+        print("  UserManagementWn embedded OK")
+
         from app.entities.user import User
         from app.controllers.user import UserDB
 
@@ -50,7 +56,9 @@ def test_gui_loads():
         print("  RegisterWn created OK")
         reg_win.destroy()
 
-        main_app.destroy()
+        mgmt_app.destroy()
+        container.destroy()
+        dash_app.destroy()
         print("  PASSED")
         return True
     except Exception as e:
