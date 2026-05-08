@@ -6,7 +6,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from app.data.db import init_db
+from app.data.db import init_db, close_db
 from app.interface.main import MainWn
 
 if __name__ == '__main__':
@@ -14,3 +14,4 @@ if __name__ == '__main__':
     root = tk.Tk()
     main = MainWn(master=root)
     root.mainloop()
+    close_db()

@@ -1,25 +1,25 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkinter.messagebox import askquestion, showinfo
+from typing import Optional
 
+from app.entities.user import User
 from app.interface.register import RegisterWn
 from app.controllers.user import UserDB
-from app.entities.user import User
-from app.data.db import init_db
 
 class MainWn(tk.Frame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        
+    def __init__(self, master: tk.Tk | None= None):
+        super().__init__(master= master)
+
         self.userDb = UserDB()
-        
+
         self.configure(bg='#f0f0f0')
         self.pack(fill=tk.BOTH, expand=True)
-        
+
         self.master.title('User Management System')
         self.master.geometry('1000x600')
         self.master.minsize(800, 500)
-        
+
         self.setup_ui()
         self.load_users()
 
@@ -50,9 +50,9 @@ class MainWn(tk.Frame):
         ttk.Button(toolbar, text="New User", command=lambda: self.open_register(1)).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="Edit", command=lambda: self.open_register(2)).pack(side=tk.LEFT, padx=2)
         ttk.Button(toolbar, text="Delete", command=lambda: self.open_register(3)).pack(side=tk.LEFT, padx=2)
-        
+
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
-        
+
         ttk.Button(toolbar, text="Refresh", command=self.load_users).pack(side=tk.LEFT, padx=2)
 
     def setup_table(self):
@@ -60,14 +60,14 @@ class MainWn(tk.Frame):
         table_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         columns = ('ID', 'Name', 'First Name', 'Last Name', 'Phone', 'Email', 'Password')
-        
+
         self.tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=20)
-        
+
         for col in columns:
             self.tree.heading(col, text=col)
             width = 80 if col == 'ID' else 150 if col in ('Name', 'Email') else 120
             self.tree.column(col, width=width, minwidth=50, anchor=tk.W)
-        
+
         self.tree.column('Password', width=100, anchor=tk.CENTER)
 
         vsb = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
@@ -88,33 +88,39 @@ class MainWn(tk.Frame):
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
     def load_users(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
+        try:
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+        except tk.TclError:
+            return
 
         users = self.userDb.select_users()
-        
-        for user in users:
-            data = user.to_tuple()
-            display_data = list(data)
-            if user._is_hashed():
-                display_data[6] = '******'
-            self.tree.insert('', tk.END, values=display_data)
-        
-        self.status_bar.config(text="Total users: {}".format(len(users)))
 
-    def open_register(self, type_val):
+        try:
+            for user in users:
+                data = user.to_tuple()
+                display_data = list(data)
+                if user._is_hashed():
+                    display_data[6] = '******'
+                self.tree.insert('', tk.END, values=display_data)
+
+            self.status_bar.config(text="Total users: {}".format(len(users)))
+        except tk.TclError:
+            pass
+
+    def open_register(self, type_val: int):
         selected = self.tree.selection()
-        
+
         if type_val in (2, 3) and not selected:
             messagebox.showwarning('No Selection', 'Please select a user from the table')
             return
-        
+
         user_to_edit = None
         if type_val in (2, 3) and selected:
             item = self.tree.item(selected[0])
-            user_id = item['values'][0]
-            user_to_edit = self.userDb.select_user(user_id)
-        
+            user_id = int( item['values'][0] )
+            user_to_edit: Optional[User | object | None] = self.userDb.select_user(user_id)
+
         registerWn = RegisterWn(self, type=type_val, userDb=self.userDb, user=user_to_edit)
         self.wait_window(registerWn)
         self.load_users()

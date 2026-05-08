@@ -25,6 +25,7 @@ def init_db():
     return _db_adapter
 
 def get_db():
+    init_db()
     return _db_adapter
 
 def close_db():
