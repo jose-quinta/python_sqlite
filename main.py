@@ -12,6 +12,6 @@ from app.interface.main import MainWn
 if __name__ == '__main__':
     init_db()
     root = tk.Tk()
-    main = MainWn(master=root)
+    app = MainWn(master=root)
     root.mainloop()
     close_db()

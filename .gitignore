@@ -37,3 +37,6 @@ build/
 
 # Libs
 lib/
+
+# Templates
+templates/

@@ -67,7 +67,7 @@ class UserManagementWn(tk.Frame):
 
         ttk.Separator(toolbar, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
 
-        ttk.Button(toolbar, text="Back", command=self.exit_application).pack(side=tk.LEFT, padx=2)
+        ttk.Button(toolbar, text="Back", command=self.exit_application).pack(side=tk.RIGHT, padx=2)
 
     def show_user_list(self):
         self.clear_container()
